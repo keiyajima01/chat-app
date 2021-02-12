@@ -1,46 +1,5 @@
 require 'rails_helper'
 
-RSpec.describe Message, type: :model do
-  describe '#create' do
-    before do
-      @message = FactoryBot.build(:message)
-    end
-    
-    it 'contentとimageが存在していれば保存できること' do
-      expect(@message).to be_valid
-    end
-
-    it 'contentが空でも保存できること' do
-      @message.content = ''
-      expect(@message).to be_valid
-    end
-
-    it 'imageが空でも保存できること' do
-      @message.image = nil
-      expect(@message).to be_valid
-    end
-
-    it 'contentとimageが空では保存できないこと' do
-      @message.content = ''
-      @message.image = nil
-      @message.valid?
-      expect(@message.errors.full_messages).to include("Content can't be blank")
-    end
-
-    it 'roomが紐付いていないと保存できないこと' do
-      @message.room = nil
-      @message.valid?
-      expect(@message.errors.full_messages).to include('Room must exist')
-    end
-
-    it 'userが紐付いていないと保存できないこと' do
-      @message.user = nil
-      @message.valid?
-      expect(@message.errors.full_messages).to include('User must exist')
-    end
-  end
-end
-
 RSpec.describe 'メッセージ投稿機能', type: :system do
   before do
     # 中間テーブルを作成して、usersテーブルとroomsテーブルのレコードを作成する
@@ -56,9 +15,12 @@ RSpec.describe 'メッセージ投稿機能', type: :system do
       click_on(@room_user.room.name)
 
       # DBに保存されていないことを確認する
+      expect {
+        find('input[name="commit"]')
+      }.not_to change { Message.count }
 
       # 元のページに戻ってくることを確認する
-
+      expect(current_path).to eq(room_messages_path(@room_user.room))
     end
   end
 
@@ -71,13 +33,19 @@ RSpec.describe 'メッセージ投稿機能', type: :system do
       click_on(@room_user.room.name)
 
       # 値をテキストフォームに入力する
+      post = 'テスト'
+      fill_in 'message_content', with: post
 
       # 送信した値がDBに保存されていることを確認する
+      expect {
+        find('input[name="commit"]').click
+      }.to change { Message.count }.by(1)
 
       # 投稿一覧画面に遷移していることを確認する
+      expect(current_path).to eq(room_messages_path(@room_user.room))
 
       # 送信した値がブラウザに表示されていることを確認する
-
+      expect(page).to have_content(post)
     end
 
     it '画像の投稿に成功すると、投稿一覧に遷移して、投稿した画像が表示されている' do
@@ -91,13 +59,18 @@ RSpec.describe 'メッセージ投稿機能', type: :system do
       image_path = Rails.root.join('public/images/test_image.png')
 
       # 画像選択フォームに画像を添付する
+      attach_file('message[image]', image_path, make_visible: true)
 
       # 送信した値がDBに保存されていることを確認する
+      expect {
+        find('input[name="commit"]').click
+      }.to change { Message.count }.by(1)
 
       # 投稿一覧画面に遷移していることを確認する
+      expect(current_path).to eq(room_messages_path(@room_user.room))
 
       # 送信した画像がブラウザに表示されていることを確認する
-
+      expect(page).to have_selector('img')
     end
 
     it 'テキストと画像の投稿に成功すること' do
@@ -111,16 +84,22 @@ RSpec.describe 'メッセージ投稿機能', type: :system do
       image_path = Rails.root.join('public/images/test_image.png')
 
       # 画像選択フォームに画像を添付する
+      attach_file('message[image]', image_path, make_visible: true)
 
       # 値をテキストフォームに入力する
+      post = 'テスト'
+      fill_in 'message_content', with: post
 
       # 送信した値がDBに保存されていることを確認する
+      expect {
+        find('input[name="commit"]').click
+      }.to change { Message.count }.by(1)
 
       # 送信した値がブラウザに表示されていることを確認する
+      expect(page).to have_content(post)
 
       # 送信した画像がブラウザに表示されていることを確認する
-
+      expect(page).to have_selector('img')
     end
   end
-endz
-
+end
